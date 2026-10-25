@@ -3,6 +3,8 @@ from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 
+from .hypothesis_test import GoodnessOfFitResult, goodness_of_fit_test
+
 
 def match_labels(true_labels, pred_labels):
     """
@@ -93,3 +95,12 @@ def find_ambiguous_elements(responsibilities, threshold):
         ).sort_values("Confidence", ascending=True)
 
     return ambiguous_elements
+
+
+__all__ = [
+    "match_labels",
+    "relabel",
+    "find_ambiguous_elements",
+    "goodness_of_fit_test",
+    "GoodnessOfFitResult",
+]
