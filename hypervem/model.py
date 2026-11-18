@@ -1,15 +1,15 @@
 import numpy as np
 import warnings
-from sklearn.base import BaseEstimator, ClusterMixin 
 from sklearn.utils.validation import check_is_fitted, check_array
 from sklearn.utils import check_random_state
 from scipy import sparse
 
+from .base import BaseCoClustering
 from . import icl_ops
 from .hypergraph import Hypergraph
 from . import vem_ops
 
-class HypergraphCoClustering(BaseEstimator, ClusterMixin):
+class HypergraphCoClustering(BaseCoClustering):
     """
     Variational Expectation-Maximization (VEM) algorithm for Co-clustering and
     parameter estimation on Hypergraphs.
@@ -127,19 +127,21 @@ class HypergraphCoClustering(BaseEstimator, ClusterMixin):
         convergence_criterion: str = "parameters",
         random_state: int | None = None
     ):
-        self.n_node_clusters = n_node_clusters
-        self.n_hyperedge_clusters = n_hyperedge_clusters
-        self.max_iter = max_iter
-        self.tol = tol
-        self.n_init = n_init
-        self.init_method = init_method
+        super().__init__(
+            n_node_clusters=n_node_clusters,
+            n_hyperedge_clusters=n_hyperedge_clusters,
+            max_iter=max_iter,
+            tol=tol,
+            n_init=n_init,
+            init_method=init_method,
+            verbose=verbose,
+            random_state=random_state,
+        )
         self.init_params = init_params
-        self.verbose = verbose
         self.debug = debug
         self.prior_method = prior_method
         self.prior_params = prior_params
         self.convergence_criterion = convergence_criterion
-        self.random_state = random_state
 
     def fit(self, X, y=None):
         """
@@ -179,10 +181,7 @@ class HypergraphCoClustering(BaseEstimator, ClusterMixin):
             A binary mask indicating observed values (1) vs missing values (0), 
             or None if no missing data is present.
         """
-        if self.n_node_clusters < 1 or self.n_hyperedge_clusters < 1:
-            raise ValueError(
-                "n_node_clusters (K) and n_hyperedge_clusters (G) must be an int larger than 0."
-            )
+        self._validate_cluster_numbers()
 
         # Handle Hypergraph Input 
         if hasattr(X, "incidence_matrix"):
@@ -226,10 +225,6 @@ class HypergraphCoClustering(BaseEstimator, ClusterMixin):
         if best_run_state is not None:
             self._restore_state(best_run_state)
             self._compute_clusters()
-
-            # Assign the row labels (hyperedge clusters) to self.labels_
-            # for sklearn clustering compatibility
-            self.labels_ = self.hyperedge_clusters_
             
             if self.verbose:
                 print(f"Best run restored (ICL={best_run_icl:.2f}).")
@@ -521,13 +516,6 @@ class HypergraphCoClustering(BaseEstimator, ClusterMixin):
             theta=self.block_probs_,
             approximation=approximation,
         )
-
-    def _compute_clusters(self):
-        """
-        Computes hard cluster assignments based on responsibilities.
-        """
-        self.node_clusters_ = np.argmax(self.node_responsibilities_, axis=1)
-        self.hyperedge_clusters_ = np.argmax(self.hyperedge_responsibilities_, axis=1)
 
     def predict_proba(self, X):
         """
